@@ -1,0 +1,11 @@
+/cmake-build-debug/
+/cmake-build-release/
+/dist/
+/Download/
+/Download_old/
+/venv/
+/client.spec
+/python-3.10.11-amd64.exe
+/ubuntu-server.tar
+/build/
+/build/client/
