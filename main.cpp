@@ -62,7 +62,7 @@ std::string receive_message(const int sock, std::string output = "")
 
     while (true)
     {
-        ssize_t n = read(sock, &c, 1);
+        const ssize_t n = read(sock, &c, 1);
 
         if (n == 0) {
             std::cerr << "Peer closed connection\n";
@@ -121,21 +121,6 @@ void handle_client(int c)
         try
         {
             if (sending_file) {
-                // std::cout << "sending file chunks from fd=" << c
-                //           << " to fd=" << sending_target << std::endl;
-
-                // bool found = false;
-                // for (auto &s : slots)
-                // {
-                //     if (s == c || s == sending_target) found = true;
-                // }
-                //
-                // if (!found)
-                // {
-                //     running = false;
-                //
-                // }
-
                 if (current_file_size + chunk_size > total_file_size)
                 {
                     chunk_size = total_file_size - current_file_size;
@@ -144,7 +129,6 @@ void handle_client(int c)
                 unsigned int bytes_read = read(c, buffer, chunk_size);
 
                 if (bytes_read == 0) {
-                    // EOF before expected size
                     std::cerr << "Sender closed connection early at "
                               << current_file_size << " / " << total_file_size << std::endl;
                     sending_file = false;
@@ -159,11 +143,6 @@ void handle_client(int c)
                 }
 
                 unsigned int bytes_written = write(sending_target, buffer, bytes_read);
-
-                // std::cout << "fd " << c << " forwarded " << bytes_read
-                //           << " bytes to fd " << sending_target
-                //           << " (total forwarded: " << current_file_size
-                // << " / " << total_file_size << ")\n";
 
                 if (current_file_size >= total_file_size) {
                     std::cout << "Finished forwarding file from fd " << c
