@@ -24,6 +24,7 @@ std::atomic running(true);
 
 constexpr int MAX_SIZE = 8;
 constexpr int EMPTY    = -1;
+constexpr int CHUNK_SIZE = 1024*256;
 
 std::array<std::atomic<int>, MAX_SIZE> slots;
 
@@ -111,8 +112,8 @@ void handle_client(int c)
     bool sending_file = false;
     int sending_target = -1;
     std::string line;
-    auto chunk_size = 1024;
-    std::byte buffer[chunk_size];
+    std::byte buffer[CHUNK_SIZE];
+    int chunk_size = CHUNK_SIZE;
 
     while (running)
     {
@@ -121,12 +122,10 @@ void handle_client(int c)
         try
         {
             if (sending_file) {
-                if (current_file_size + chunk_size > total_file_size)
-                {
-                    chunk_size = total_file_size - current_file_size;
-                }
+                unsigned long long remaining = total_file_size - current_file_size;
+                unsigned long long toRead = std::min((unsigned long long)CHUNK_SIZE, remaining);
 
-                unsigned int bytes_read = read(c, buffer, chunk_size);
+                unsigned int bytes_read = read(c, buffer, toRead);
 
                 if (bytes_read == 0) {
                     std::cerr << "Sender closed connection early at "
@@ -191,10 +190,13 @@ void handle_client(int c)
                 } else {
                     std::cerr << "Invalid request target: " << target_id << std::endl;
                 }
+
+                sending_target = target_id;
             }
             else if (type == "un-pair")
             {
                 int to_id = message.value("to", -1);
+                if (to_id != sending_target) return;
                 json json_payload;
                 json_payload["type"] = "un-pair";
                 json_payload["from"] = c;
@@ -218,6 +220,8 @@ void handle_client(int c)
 
                 addNumber(to_id);
                 addNumber(c);
+
+                sending_target = to_id;
             }
             else if (type == "reject")
             {
@@ -228,6 +232,8 @@ void handle_client(int c)
                 json_payload["from"] = c;
 
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
+
+                sending_target = -1;
             }
             else if (type == "file_metadata")
             {
@@ -288,6 +294,17 @@ void handle_client(int c)
             std::cout << "Exception in client handler (fd=" << c << "): " << e.what() << std::endl;
             break;
         }
+    }
+
+    if (sending_target)
+    {
+        json json_payload;
+        json_payload["type"] = "un-pair";
+        json_payload["from"] = c;
+
+        std::cout << "Un pair request sent to " << sending_target << std::endl;
+
+        if (sending_target >= 0) write_message(sending_target, json_payload.dump());
     }
 
     close(c);
