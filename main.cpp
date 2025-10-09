@@ -113,7 +113,6 @@ void handle_client(int c)
     int sending_target = -1;
     std::string line;
     std::byte buffer[CHUNK_SIZE];
-    int chunk_size = CHUNK_SIZE;
 
     while (running)
     {
