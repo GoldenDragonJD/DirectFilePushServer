@@ -22,7 +22,7 @@ int server_socket = -1;
 std::atomic<unsigned int> client_count = 0;
 std::atomic running(true);
 
-constexpr int MAX_SIZE = 8;
+constexpr int MAX_SIZE = 4;
 constexpr int EMPTY    = -1;
 constexpr int CHUNK_SIZE = 1024*256;
 
@@ -99,6 +99,23 @@ void write_message(const int sock, const std::string &json_message)
 
 void handle_client(int c)
 {
+    if (client_count > MAX_SIZE)
+    {
+        std::cout << "Server full message sent" << std::endl;
+
+        int id = -1;
+
+        if (write(c, &id, sizeof(int)) != sizeof(int)) {
+            std::cerr << "Warning: failed to send id to client fd=" << c << std::endl;
+        }
+
+        close(c);
+        removeNumber(c);
+        client_count = client_count - 1;
+
+        return;
+    }
+
     std::cout << "client " << c << " connected" << std::endl;
 
     // send client id as an int (so python client can unpack)
@@ -346,7 +363,7 @@ int main()
 
     while (running)
     {
-        if (client_count >= 8) continue;
+        if (client_count > MAX_SIZE + 1) continue;
         sockaddr_in client_address {};
         socklen_t client_address_length = sizeof(client_address);
         const int client_int = accept(server_socket, reinterpret_cast<struct sockaddr*>(&client_address), &client_address_length);
