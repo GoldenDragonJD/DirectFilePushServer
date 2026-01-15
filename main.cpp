@@ -159,6 +159,12 @@ void handle_client(int c)
 
                 unsigned int bytes_written = write(sending_target, buffer, bytes_read);
 
+                while (bytes_written < bytes_read)
+                {
+                    unsigned int remaining_to_write = bytes_read - bytes_written;
+                    bytes_written = write(sending_target, buffer, remaining_to_write);
+                }
+
                 if (current_file_size >= total_file_size) {
                     std::cout << "Finished forwarding file from fd " << c
                               << " to fd " << sending_target << std::endl;
@@ -166,14 +172,10 @@ void handle_client(int c)
                     current_file_size = 0;
                     total_file_size = 0;
                     sending_target = -1;
-
-                    std::cout << "Last bytes sent: " << bytes_written << std::endl;
-                    std::cout << "Last bytes received: " << reinterpret_cast<char*>(&buffer) << std::endl;
                 }
 
                 continue;
             }
-
 
             // read a JSON control line (newline-terminated)
             line = receive_message(c);
@@ -276,6 +278,19 @@ void handle_client(int c)
                 } else {
                     std::cerr << "Invalid file_metadata 'to' field: " << to_id << std::endl;
                 }
+            }
+            else if (type == "directory_builder")
+            {
+                int to_id = message.value("to", -1);
+                json json_payload;
+                json_payload["type"] = "directory_builder";
+                json_payload["root_path"] = message["root_path"];
+                json_payload["directories"] = message["directories"];
+                json_payload["file_count"] = message["file_count"];
+                json_payload["from"] = c;
+
+                if (to_id >= 0) write_message(to_id, json_payload.dump());
+                else std::cerr << "Invalid directory_builder field: " << to_id << std::endl;
             }
             else if (type == "file_transfer_finished")
             {
