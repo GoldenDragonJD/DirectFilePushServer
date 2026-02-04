@@ -313,6 +313,46 @@ void handle_client(int c)
 
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
             }
+            else if (type == "encryption_request")
+            {
+                int to_id = message.value("to", -1);
+                json json_payload;
+                json_payload["type"] = "encryption_request";
+                json_payload["challenge"] = message["challenge"];
+                if (to_id >= 0) write_message(to_id, json_payload.dump());
+                else std::cerr << "Invalid encryption request field: " << to_id << std::endl;
+            }
+            else if (type == "encryption_password_check")
+            {
+                int to_id = message.value("to", -1);
+                json json_payload;
+                json_payload["type"] = "encryption_password_check";
+                json_payload["response"] = message["response"];
+                if (to_id >= 0) write_message(to_id, json_payload.dump());
+                else std::cerr << "Invalid encryption password_check field: " << to_id << std::endl;
+            }
+            else if (type == "encrypted_password_check_fail")
+            {
+                int to_id = message.value("to", -1);
+                json json_payload;
+                json_payload["type"] = "encrypted_password_check_fail";
+                if (to_id >= 0) write_message(to_id, json_payload.dump());
+            }
+            else if (type == "encrypted_password_check_pass")
+            {
+                int to_id = message.value("to", -1);
+                json json_payload;
+                json_payload["type"] = "encrypted_password_check_pass";
+                json_payload["nonce"] = message["nonce"];
+                if (to_id >= 0) write_message(to_id, json_payload.dump());
+            }
+            else if (type == "encryption_off")
+            {
+                int to_id = message.value("to", -1);
+                json json_payload;
+                json_payload["type"] = "encryption_off";
+                if (to_id >= 0) write_message(to_id, json_payload.dump());
+            }
             else
             {
                 std::cerr << "Unknown message type from fd=" << c << ": " << type << std::endl;
