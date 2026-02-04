@@ -22,13 +22,14 @@ int server_socket = -1;
 std::atomic<unsigned int> client_count = 0;
 std::atomic running(true);
 
-constexpr int MAX_SIZE = 4;
+int MAX_SIZE = 4;
 constexpr int EMPTY    = -1;
 constexpr int CHUNK_SIZE = 1024*256;
 
-std::array<std::atomic<int>, MAX_SIZE> slots;
+std::vector<std::atomic<int>> slots;
 
 void initSlots() {
+    slots = std::vector<std::atomic<int>>(MAX_SIZE);
     for (auto &s : slots) {
         s.store(EMPTY);
     }
@@ -133,13 +134,11 @@ void handle_client(int c)
 
     while (running)
     {
-        line = "";
-
         try
         {
             if (sending_file) {
                 unsigned long long remaining = total_file_size - current_file_size;
-                unsigned long long toRead = std::min((unsigned long long)CHUNK_SIZE, remaining);
+                unsigned long long toRead = std::min(static_cast<unsigned long long>(CHUNK_SIZE), remaining);
 
                 unsigned int bytes_read = read(c, buffer, toRead);
 
@@ -395,14 +394,47 @@ void signal_handle(int)
     }
 }
 
-int main()
+int main(const int argc, char* argv[])
 {
+    auto host = IPADDRESS;
+    int port = 3000;
+
+    for (int i = 1; i < argc; i++)
+    {
+        if (strcmp(argv[i], "--host") == 0 && i + 1 < argc)
+        {
+            host = argv[++i];
+        }
+        else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc)
+        {
+            char* end = nullptr;
+            errno = 0;
+            long value = std::strtol(argv[++i], &end, 10);
+
+            if (errno != 0 || *end != '\0' || value < 1 || value > 65535)
+                return 1;
+
+            port = static_cast<int>(value);
+        }
+        else if (strcmp(argv[i], "--max-clients") == 0 && i + 1 < argc)
+        {
+            char* end = nullptr;
+            errno = 0;
+            long value = std::strtol(argv[++i], &end, 10);
+
+            if (errno != 0 || *end != '\0' || value <= 0)
+                return 1;
+
+            MAX_SIZE = static_cast<int>(value);
+        }
+    }
+
     signal(SIGINT, signal_handle);
     signal(SIGTERM, signal_handle);
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     server.sin_family = AF_INET;
-    server.sin_port = htons(3000);
-    server.sin_addr.s_addr = inet_addr(IPADDRESS);
+    server.sin_port = htons(port);
+    server.sin_addr.s_addr = inet_addr(host);
 
     constexpr int opt = 1;
     setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
