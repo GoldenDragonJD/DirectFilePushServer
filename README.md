@@ -69,3 +69,30 @@ cd DirectFilePushServer
 cmake .
 cmake --build .
 ```
+
+---
+
+## Run Parameters
+***optional***
+
+- ```--port 3000```
+- ```--host 0.0.0.0```
+- ```--max-clients 4```
+- ```--chunk-size 1024```
+- ```--chunk-size-k 256``` **default**
+
+****note: These values are all default****
+
+### Examples
+**1KB File Transfer Buffer**
+```bash
+DirectFilePushServer --port 3000 --host 0.0.0.0 --max-clients 1000 --chunk-size 1024
+```
+
+**256KB File Transfer Buffer**
+```bash
+DirectFilePushServer --port 3000 --host 0.0.0.0 --max-clients 1000 --chunk-size-k 256
+```
+
+****note: If both --chunk-size and --chunk-size-k are used in the same command line, then --chunk-size-k will be used instead****
+
