@@ -23,8 +23,8 @@ std::atomic<unsigned int> client_count = 0;
 std::atomic running(true);
 
 int MAX_SIZE = 4;
+int CHUNK_SIZE = 1024*256;
 constexpr int EMPTY    = -1;
-constexpr int CHUNK_SIZE = 1024*256;
 
 std::vector<std::atomic<int>> slots;
 
@@ -409,7 +409,7 @@ int main(const int argc, char* argv[])
         {
             char* end = nullptr;
             errno = 0;
-            long value = std::strtol(argv[++i], &end, 10);
+            const long value = std::strtol(argv[++i], &end, 10);
 
             if (errno != 0 || *end != '\0' || value < 1 || value > 65535)
                 return 1;
@@ -420,12 +420,34 @@ int main(const int argc, char* argv[])
         {
             char* end = nullptr;
             errno = 0;
-            long value = std::strtol(argv[++i], &end, 10);
+            const long value = std::strtol(argv[++i], &end, 10);
 
             if (errno != 0 || *end != '\0' || value <= 0)
                 return 1;
 
             MAX_SIZE = static_cast<int>(value);
+        }
+        else if (strcmp(argv[i], "--chunk-size") == 0 && i + 1 < argc)
+        {
+            char* end = nullptr;
+            errno = 0;
+            const long value = std::strtol(argv[++i], &end, 10);
+
+            if (errno != 0 || *end != '\0' || value < 0)
+                return 1;
+
+            CHUNK_SIZE = static_cast<int>(value);
+        }
+        else if (strcmp(argv[i], "--chunk-size-k") == 0 && i + 1 < argc)
+        {
+            char* end = nullptr;
+            errno = 0;
+            const long value = std::strtol(argv[++i], &end, 10);
+
+            if (errno != 0 || *end != '\0' || value < 0)
+                return 1;
+
+            CHUNK_SIZE = static_cast<int>(value * 1024);
         }
     }
 
