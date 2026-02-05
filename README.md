@@ -3,7 +3,7 @@
 A lightweight server application that acts as the hub for the client application [DirectFilePushClient]("https://github.com/GoldenDragonJD/DirectFilePushClient") to connect to.
 
 My goal with this project was to allow for any size file transfer to be done without anyone needing to portforward
-or pay a cloud service to upload thier files onto. The main thought was speed when designing this, 
+or pay a cloud service to upload their files onto. The main thought was speed when designing this, 
 so I decided to first time c++ for this project,
 but I'd say with the help of ChatGPT I did pretty good. I'm open to any feedback so please feel free to share some.
 
