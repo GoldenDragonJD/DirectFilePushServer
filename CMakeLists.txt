@@ -4,5 +4,4 @@ project(DirectFilePushServer)
 set(CMAKE_CXX_STANDARD 20)
 
 add_executable(DirectFilePushServer main.cpp
-        include/json.hpp
-        main.cpp)
+        include/json.hpp)

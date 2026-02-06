@@ -235,8 +235,8 @@ void handle_client(int c)
 
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
 
-                addNumber(to_id);
-                addNumber(c);
+                if (!addNumber(to_id)) std::cout << "Error adding number to slots." << std::endl;
+                if (!addNumber(c)) std::cout << "Error adding number to slots." << std::endl;
 
                 sending_target = to_id;
             }
@@ -457,6 +457,8 @@ int main(const int argc, char* argv[])
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
     server.sin_addr.s_addr = inet_addr(host);
+
+    initSlots();
 
     constexpr int opt = 1;
     setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
