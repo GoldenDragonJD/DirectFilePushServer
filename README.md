@@ -1,6 +1,6 @@
 # DirectFilePushServer
 
-A lightweight server application that acts as the hub for the client application [DirectFilePushClient]("https://github.com/GoldenDragonJD/DirectFilePushClient") to connect to.
+A lightweight server application that acts as the hub for the client application [DirectFilePushClient](https://github.com/GoldenDragonJD/DirectFilePushClient) to connect to.
 
 My goal with this project was to allow for any size file transfer to be done without anyone needing to portforward
 or pay a cloud service to upload their files onto. The main thought was speed when designing this, 
