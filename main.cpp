@@ -351,6 +351,23 @@ void handle_client(int c)
                 json_payload["type"] = "encryption_off";
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
             }
+            else if (type == "file_check")
+            {
+                int to_id = message.value("to", -1);
+                json json_payload;
+                json_payload["type"] = "file_check";
+                json_payload["file_path"] = message["file_path"];
+                json_payload["hash"] = message["hash"];
+                if (to_id >= 0) write_message(to_id, json_payload.dump());
+            }
+            else if (type == "file_check_reply")
+            {
+                int to_id = message.value("to", -1);
+                json json_payload;
+                json_payload["type"] = "file_check_reply";
+                json_payload["skip"] = message["skip"];
+                if (to_id >= 0) write_message(to_id, json_payload.dump());
+            }
             else
             {
                 std::cerr << "Unknown message type from fd=" << c << ": " << type << std::endl;
