@@ -368,6 +368,14 @@ void handle_client(int c)
                 json_payload["skip"] = message["skip"];
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
             }
+            else if (type == "batch_file_check_reply")
+            {
+                int to_id = message.value("to", -1);
+                json json_payload;
+                json_payload["type"] = "batch_file_check_reply";
+                json_payload["skip_list"] = message["skip_list"];
+                if (to_id >= 0) write_message(to_id, json_payload.dump());
+            }
             else
             {
                 std::cerr << "Unknown message type from fd=" << c << ": " << type << std::endl;
