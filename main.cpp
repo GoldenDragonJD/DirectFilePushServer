@@ -285,6 +285,7 @@ void handle_client(int c)
                 json_payload["root_path"] = message["root_path"];
                 json_payload["directories"] = message["directories"];
                 json_payload["file_count"] = message["file_count"];
+                json_payload["manifest"] = message["manifest"];
                 json_payload["from"] = c;
 
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
