@@ -93,6 +93,8 @@ client_id = struct.unpack("i", data)[0]
 
 print(f"Connected to server\nClient id: {client_id}")
 
+client.sendall("DirectFilePushClient".encode("utf-8"))
+
 threading.Thread(target=handle_rec, args=(client,), daemon=True).start()
 
 while(running):

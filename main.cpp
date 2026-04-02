@@ -11,6 +11,8 @@
 #include <format>
 #include <vector>
 #include <memory>
+#include <chrono>
+#include <sys/time.h>
 #include "include/json.hpp"
 #define IPADDRESS "0.0.0.0"
 
@@ -26,6 +28,17 @@ int CHUNK_SIZE = 1024*256;
 constexpr int EMPTY    = -1;
 
 std::vector<std::atomic<int>> slots;
+
+std::string get_time()
+{
+    auto now_utc = std::chrono::system_clock::now();
+
+    std::chrono::zoned_time local_time{std::chrono::current_zone(), now_utc};
+
+    std::string formatted = std::format("{:%OH:%OM:%OS %m/%d/%y} ", local_time);
+
+    return formatted;
+}
 
 void initSlots() {
     slots = std::vector<std::atomic<int>>(MAX_SIZE);
@@ -59,19 +72,19 @@ std::string receive_message(const int sock, std::string output = "")
 {
     char c;
 
-    std::cerr << "Waiting to read from socket fd=" << sock << std::endl;
+    std::cerr << get_time() << "Waiting to read from socket fd=" << sock << std::endl;
 
     while (true)
     {
         const ssize_t n = read(sock, &c, 1);
 
         if (n == 0) {
-            std::cerr << "Peer closed connection\n";
+            std::cerr << get_time() << "Peer closed connection\n";
             break;
         }
         if (n < 0) {
             if (errno == EINTR) continue;
-            std::cerr << "Read error: " << strerror(errno) << std::endl;
+            std::cerr << get_time() << "Read error: " << strerror(errno) << std::endl;
             break;
         }
 
@@ -86,7 +99,7 @@ std::string receive_message(const int sock, std::string output = "")
         output.pop_back();
     }
 
-    std::cout << "Received: " << output << std::endl;
+    std::cout << get_time() << "Received: " << output << std::endl;
     return output;
 }
 
@@ -101,12 +114,12 @@ void handle_client(int c)
 {
     if (client_count > MAX_SIZE)
     {
-        std::cout << "Server full message sent" << std::endl;
+        std::cout << get_time() << "Server full message sent" << std::endl;
 
         int id = -1;
 
         if (write(c, &id, sizeof(int)) != sizeof(int)) {
-            std::cerr << "Warning: failed to send id to client fd=" << c << std::endl;
+            std::cerr << get_time() << "Warning: failed to send id to client fd=" << c << std::endl;
         }
 
         close(c);
@@ -116,12 +129,38 @@ void handle_client(int c)
         return;
     }
 
-    std::cout << "client " << c << " connected" << std::endl;
+    std::cout << get_time() << "client " << c << " connected" << std::endl;
 
     // send client id as an int (so python client can unpack)
     int id = c;
     if (write(c, &id, sizeof(id)) != sizeof(id)) {
-        std::cerr << "Warning: failed to send id to client fd=" << c << std::endl;
+        std::cerr << get_time() << "Warning: failed to send id to client fd=" << c << std::endl;
+    }
+
+    char check_buffer[21];
+
+    timeval timeout{};
+    timeout.tv_sec = 3;
+    timeout.tv_usec = 0;
+
+    if (setsockopt(c, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+        perror("setsockopt failed");
+    }
+
+    read(c, check_buffer, sizeof(check_buffer) - 1);
+
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 0;
+    setsockopt(c, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+    std::cout << get_time() << check_buffer << " received" << std::endl;
+
+    if (std::string(check_buffer, 20) != "DirectFilePushClient")
+    {
+        close(c);
+        removeNumber(c);
+        client_count = client_count - 1;
+        std::cout << get_time() << "Client fd=" << c << " handler exiting\n";
     }
 
     unsigned long long current_file_size = 0;
@@ -142,7 +181,7 @@ void handle_client(int c)
                 unsigned int bytes_read = read(c, buffer, toRead);
 
                 if (bytes_read == 0) {
-                    std::cerr << "Sender closed connection early at "
+                    std::cerr << get_time() << "Sender closed connection early at "
                               << current_file_size << " / " << total_file_size << std::endl;
                     sending_file = false;
                     continue;
@@ -164,7 +203,7 @@ void handle_client(int c)
                 }
 
                 if (current_file_size >= total_file_size) {
-                    std::cout << "Finished forwarding file from fd " << c
+                    std::cout << get_time() << "Finished forwarding file from fd " << c
                               << " to fd " << sending_target << std::endl;
                     sending_file = false;
                     current_file_size = 0;
@@ -178,7 +217,7 @@ void handle_client(int c)
             // read a JSON control line (newline-terminated)
             line = receive_message(c);
             if (line.empty()) {
-                std::cerr << "receive_message returned empty (peer closed?) for fd=" << c << std::endl;
+                std::cerr << get_time() << "receive_message returned empty (peer closed?) for fd=" << c << std::endl;
                 break;
             }
 
@@ -204,7 +243,7 @@ void handle_client(int c)
                 if (target_id >= 0) {
                     write_message(target_id, json_payload.dump());
                 } else {
-                    std::cerr << "Invalid request target: " << target_id << std::endl;
+                    std::cerr << get_time() << "Invalid request target: " << target_id << std::endl;
                 }
 
                 sending_target = target_id;
@@ -230,7 +269,7 @@ void handle_client(int c)
                 json_payload["message"] = std::format("Client: {} accepted the file transfer request.", c);
                 json_payload["from"] = c;
 
-                std::cout << "Client " << c << " accepted the file transfer request." << std::endl;
+                std::cout << get_time() << "Client " << c << " accepted the file transfer request." << std::endl;
 
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
 
@@ -271,10 +310,10 @@ void handle_client(int c)
                     current_file_size = 0;
                     // create_buffer_sizes(total_file_size, buffer_sizes);
 
-                    std::cout << "Now forwarding raw file bytes from fd=" << c << " to fd=" << sending_target
+                    std::cout << get_time() << "Now forwarding raw file bytes from fd=" << c << " to fd=" << sending_target
                               << " expected_size=" << total_file_size << std::endl;
                 } else {
-                    std::cerr << "Invalid file_metadata 'to' field: " << to_id << std::endl;
+                    std::cerr << get_time() << "Invalid file_metadata 'to' field: " << to_id << std::endl;
                 }
             }
             else if (type == "directory_builder")
@@ -289,7 +328,7 @@ void handle_client(int c)
                 json_payload["from"] = c;
 
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
-                else std::cerr << "Invalid directory_builder field: " << to_id << std::endl;
+                else std::cerr << get_time() << "Invalid directory_builder field: " << to_id << std::endl;
             }
             else if (type == "file_transfer_finished")
             {
@@ -300,7 +339,7 @@ void handle_client(int c)
 
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
 
-                std::cout << "file transfer finished" << std::endl;
+                std::cout << get_time() << "file transfer finished" << std::endl;
             }
             else if (type == "message")
             {
@@ -319,7 +358,7 @@ void handle_client(int c)
                 json_payload["type"] = "encryption_request";
                 json_payload["challenge"] = message["challenge"];
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
-                else std::cerr << "Invalid encryption request field: " << to_id << std::endl;
+                else std::cerr << get_time() << "Invalid encryption request field: " << to_id << std::endl;
             }
             else if (type == "encryption_password_check")
             {
@@ -328,7 +367,7 @@ void handle_client(int c)
                 json_payload["type"] = "encryption_password_check";
                 json_payload["response"] = message["response"];
                 if (to_id >= 0) write_message(to_id, json_payload.dump());
-                else std::cerr << "Invalid encryption password_check field: " << to_id << std::endl;
+                else std::cerr << get_time() << "Invalid encryption password_check field: " << to_id << std::endl;
             }
             else if (type == "encrypted_password_check_fail")
             {
@@ -379,14 +418,14 @@ void handle_client(int c)
             }
             else
             {
-                std::cerr << "Unknown message type from fd=" << c << ": " << type << std::endl;
+                std::cerr << get_time() << "Unknown message type from fd=" << c << ": " << type << std::endl;
             }
 
-            std::cout << "Control message: " << message.dump() << std::endl;
+            std::cout << get_time() << "Control message: " << message.dump() << std::endl;
         }
         catch (std::exception &e)
         {
-            std::cout << "Exception in client handler (fd=" << c << "): " << e.what() << std::endl;
+            std::cout << get_time() << "Exception in client handler (fd=" << c << "): " << e.what() << std::endl;
             break;
         }
     }
@@ -397,7 +436,7 @@ void handle_client(int c)
         json_payload["type"] = "un-pair";
         json_payload["from"] = c;
 
-        std::cout << "Un pair request sent to " << sending_target << std::endl;
+        std::cout << get_time() << "Un pair request sent to " << sending_target << std::endl;
 
         if (sending_target >= 0) write_message(sending_target, json_payload.dump());
     }
@@ -405,7 +444,7 @@ void handle_client(int c)
     close(c);
     removeNumber(c);
     client_count = client_count - 1;
-    std::cout << "Client fd=" << c << " handler exiting\n";
+    std::cout << get_time() << "Client fd=" << c << " handler exiting\n";
 }
 
 void signal_handle(int)
@@ -413,7 +452,7 @@ void signal_handle(int)
     running = false;
     if (server_socket != -1)
     {
-        std::cout << "Closing socket" << std::endl;
+        std::cout << get_time() << "Closing socket" << std::endl;
         shutdown(server_socket, SHUT_RDWR);
         close(server_socket);
     }
