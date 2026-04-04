@@ -161,6 +161,7 @@ void handle_client(int c)
         removeNumber(c);
         client_count = client_count - 1;
         std::cout << get_time() << "Client fd=" << c << " handler exiting\n";
+        return;
     }
 
     unsigned long long current_file_size = 0;
